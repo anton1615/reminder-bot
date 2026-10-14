@@ -1,0 +1,11 @@
+node_modules/
+.wrangler/
+.dev.vars
+.secrets_gen.txt
+.shots/
+.token_decoded
+*.log
+discord_bot_token.txt
+.cron_secret
+# wrangler.toml is committed: it must stay in the repo so Workers Builds can deploy.
+# Put account-specific values in the Cloudflare dashboard, not here.
