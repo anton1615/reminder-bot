@@ -53,8 +53,16 @@ graph TD
 ### 前置需求
 
 - 已啟用 Workers 的 Cloudflare 帳號
-- Node.js 18 以上（`npx wrangler`）
+- Node.js 18 以上
 - 一個帶 bot token 的 Discord 應用程式
+
+以下步驟使用 `npx wrangler`，第一次執行時會自動下載 Wrangler——本專案沒有 `package.json`，不需要安裝任何東西。部署前先登入一次：
+
+```sh
+npx wrangler login
+```
+
+這會開啟瀏覽器授權存取你的 Cloudflare 帳號。若你想全部改用 dashboard 操作，可跳過此步，直接看本節最後的[不用 Wrangler 的部署方式](#不用-wrangler-的部署方式)。
 
 ### 1. 建立 Discord bot
 
@@ -155,6 +163,37 @@ custom_domain = true
 ```
 
 移除 `[[routes]]` 區塊**不會**解除已綁定的自訂網域——綁定會持續存在，直到你在 dashboard 移除它。
+
+### 不用 Wrangler 的部署方式
+
+上面所有步驟都可以改用 Cloudflare dashboard 完成。這條路徑走 Workers Builds：Cloudflare 會替你 clone repo、執行 `wrangler deploy`，並在每次 push 時自動重新部署。
+
+先**把 repo fork 到自己的 GitHub 帳號**（或推到自己的新 repo），然後：
+
+1. **建立 Worker。** 在 dashboard 前往 **Workers & Pages → Create application → Import a repository**，連接你的 GitHub 帳號、選擇該 repo，按 **Deploy**。
+
+   Workers Builds 會讀取 repo 裡的 `wrangler.toml`，因此進入點、cron 排程與 KV 綁定全部來自這個已提交的檔案，不需要手動填寫。
+
+   唯一必須保持一致的是名稱：Cloudflare 要求 dashboard 上的 Worker 名稱與 `wrangler.toml` 的 `name` 相符，也就是 `reminder-bot`。匯入時請接受這個名稱，或先把你偏好的名稱填進 `wrangler.toml` 的 `name`，再連接 repo。
+
+2. **建立 KV namespace。** 第一次 build 會自動建立，與[步驟 2](#2-kv-namespace)相同，不需任何操作。若你想自己建立，前往 **Workers KV** 頁面，選 **Create instance**，再開啟 Worker 的 **Bindings** 分頁，選 **Add binding → KV namespace**，變數名稱填 `REMINDERS`，選取該 namespace。
+
+3. **加入 secrets。** 開啟 Worker，前往 **Settings → Variables and Secrets**，新增四筆型別為 **Secret** 的項目：
+
+   | 名稱 | 值 |
+   | --- | --- |
+   | `AUTH_PASSWORD` | 你想要的網頁介面密碼 |
+   | `AUTH_SECRET` | 任何夠長的隨機字串 |
+   | `DISCORD_TOKEN` | [步驟 1](#1-建立-discord-bot)的 bot token |
+   | `DISCORD_USER_ID` | 收件人的數字使用者 ID |
+
+   按 **Deploy** 套用變更。
+
+4. **確認 cron 排程。** 前往 **Settings → Triggers → Cron Triggers**，應該會顯示 `0 0 * * *`（來自 `wrangler.toml`）。想改時間就在這裡調整。
+
+5. **開啟 Worker 網址**（在 **Settings → Domains & Routes** 底下，除非你綁了自訂網域，否則就是 `*.workers.dev`），用 `AUTH_PASSWORD` 登入。
+
+這個專案**不能**用 dashboard 的內建編輯器：Worker 由兩個模組組成（`src/index.js` 匯入 `./ui.js`），而內建編輯器只支援單一檔案。請使用 Workers Builds，或在本機用 Wrangler。
 
 ## 本地開發
 

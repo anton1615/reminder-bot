@@ -51,8 +51,16 @@ graph TD
 ### Prerequisites
 
 - A Cloudflare account with Workers enabled
-- Node.js 18 or later (`npx wrangler`)
+- Node.js 18 or later
 - A Discord application with a bot token
+
+The steps below use `npx wrangler`, which downloads Wrangler on first run — there is no `package.json` and nothing to install. Authenticate once before deploying:
+
+```sh
+npx wrangler login
+```
+
+This opens a browser window to grant access to your Cloudflare account. Skip it if you would rather do everything from the dashboard: see [Deploy without Wrangler](#deploy-without-wrangler) at the end of this section.
 
 ### 1. Create the Discord bot
 
@@ -153,6 +161,37 @@ custom_domain = true
 ```
 
 Removing a `[[routes]]` block does not detach an existing custom domain from the Worker — the binding persists until you remove it in the dashboard.
+
+### Deploy without Wrangler
+
+Everything above can be done from the Cloudflare dashboard instead of the terminal. This path uses Workers Builds: Cloudflare clones the repository, runs `wrangler deploy` for you, and redeploys on every push.
+
+**Fork the repository** to your own GitHub account first (or push it to a new repository of your own), then:
+
+1. **Create the Worker.** In the dashboard go to **Workers & Pages → Create application → Import a repository**. Connect your GitHub account, pick the repository, and select **Deploy**.
+
+   Workers Builds reads `wrangler.toml` from the repository, so the entry point, cron schedule and KV binding all come from the committed file. You do not fill them in by hand.
+
+   The one value you must keep in sync is the name: Cloudflare requires the Worker name in the dashboard to match `name` in `wrangler.toml`, which is `reminder-bot`. Accept that name when importing, or change `name` in `wrangler.toml` to whatever you prefer before connecting the repository.
+
+2. **Create the KV namespace.** The first build provisions it automatically, exactly as in [step 2](#2-kv-namespace) — no action needed. If you would rather create it yourself, go to the **Workers KV** page, select **Create instance**, then open your Worker's **Bindings** tab, choose **Add binding → KV namespace**, set the variable name to `REMINDERS`, and pick the namespace.
+
+3. **Add the secrets.** Open your Worker, go to **Settings → Variables and Secrets**, and add four entries of type **Secret**:
+
+   | Name | Value |
+   | --- | --- |
+   | `AUTH_PASSWORD` | the password you want for the web UI |
+   | `AUTH_SECRET` | any long random string |
+   | `DISCORD_TOKEN` | the bot token from [step 1](#1-create-the-discord-bot) |
+   | `DISCORD_USER_ID` | the recipient's numeric user ID |
+
+   Select **Deploy** to apply the changes.
+
+4. **Confirm the cron schedule.** Go to **Settings → Triggers → Cron Triggers**. It should show `0 0 * * *`, taken from `wrangler.toml`. Adjust it here if you want a different time.
+
+5. **Open the Worker URL** shown under **Settings → Domains & Routes** (the `*.workers.dev` address, unless you bound a custom domain) and sign in with `AUTH_PASSWORD`.
+
+The dashboard editor is not an option for this project: the Worker is two modules (`src/index.js` imports `./ui.js`), and the built-in editor only handles a single file. Use Workers Builds, or Wrangler locally.
 
 ## Local development
 
