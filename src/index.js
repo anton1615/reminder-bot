@@ -199,19 +199,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Endpoint for external schedulers (GitHub Actions), since Cron Triggers may not fire.
-    // Authenticated with CRON_SECRET: callers have no session cookie.
-    if (url.pathname === '/api/run') {
-      if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
-      if (!env.CRON_SECRET) return json({ error: 'CRON_SECRET is not configured' }, 500);
-      if (request.headers.get('X-Cron-Secret') !== env.CRON_SECRET) return json({ error: 'Unauthorized' }, 401);
-      try {
-        return json({ ok: true, results: await runReminders(env) });
-      } catch (err) {
-        return json({ error: 'Run failed: ' + err.message }, 500);
-      }
-    }
-
     if (url.pathname.startsWith('/api/')) {
       if (!env.AUTH_SECRET) return json({ error: 'AUTH_SECRET is not configured' }, 500);
       try {

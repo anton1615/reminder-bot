@@ -27,8 +27,7 @@ graph TD
     C -->|POST /api/login| E[比對 AUTH_PASSWORD]
     E -->|正確| F[簽發 HMAC cookie]
     D -->|/api/reminders| G[KV 讀寫]
-    H[排程器<br/>每日] -->|POST /api/run| I[驗證 CRON_SECRET]
-    I --> J[挑出未完成<br/>且 date <= 今天]
+    H[Cron Trigger<br/>每日 00:00 UTC] --> J[挑出未完成<br/>且 date <= 今天]
     J --> K[Discord 私訊]
     K --> L[標記已發送]
 ```
@@ -120,17 +119,16 @@ binding = "REMINDERS"
 
 ### 4. 設定 secrets
 
-程式會從環境讀取五個 secret，都不應進版控。
+程式會從環境讀取四個 secret，都不應進版控。
 
 ```sh
 npx wrangler secret put AUTH_PASSWORD    # 網頁介面密碼
 npx wrangler secret put AUTH_SECRET      # 簽章 session cookie 用的隨機字串
 npx wrangler secret put DISCORD_TOKEN    # 步驟 1 的 bot token
 npx wrangler secret put DISCORD_USER_ID  # 收件人的數字使用者 ID
-npx wrangler secret put CRON_SECRET      # /api/run 端點用的隨機字串
 ```
 
-產生兩個隨機值：
+產生 `AUTH_SECRET`：
 
 ```sh
 openssl rand -base64 32
@@ -158,46 +156,24 @@ custom_domain = true
 
 移除 `[[routes]]` 區塊**不會**解除已綁定的自訂網域——綁定會持續存在，直到你在 dashboard 移除它。
 
-### 7. 選用：用 GitHub Actions 當排程器
-
-Cron Trigger 偶爾會在新建立或修改的排程上無法啟用，詳見[排程注意事項](#排程注意事項)。Worker 提供 `POST /api/run`，以 `X-Cron-Secret` 標頭驗證，因此任何外部排程器都能當備援。
-
-內附的 workflow 每天呼叫該端點。啟用方式是把同樣的值設成 repository secret：
-
-```sh
-gh secret set CRON_SECRET
-```
-
-接著手動觸發一次確認可用：
-
-```sh
-gh workflow run daily-reminders.yml
-```
-
-兩個排程器同時運作是安全的：發送具冪等性，第二個執行時不會有事做。
-
 ## 本地開發
 
-建立 `.dev.vars`，填入同樣五個變數（已在 `.gitignore` 中）。
+建立 `.dev.vars`，填入同樣四個變數（已在 `.gitignore` 中）。
 
 ```sh
 npx wrangler dev --local
 ```
 
-在本機測試排程路徑：
+在本機測試排程路徑，請以 `--test-scheduled` 啟動 dev server，直接觸發 `scheduled()` handler：
 
 ```sh
-# 方式一：呼叫外部排程器用的同一個端點
-curl -X POST -H "X-Cron-Secret: <值>" http://localhost:8787/api/run
-
-# 方式二：直接觸發 scheduled() handler
 npx wrangler dev --local --test-scheduled
 curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
 ```
 
 ## API
 
-除 `/api/login` 與 `/api/run` 外，所有端點都需要有效的 session cookie。
+除 `/api/login` 外，所有端點都需要有效的 session cookie。
 
 | 方法 | 路徑 | 用途 |
 | --- | --- | --- |
@@ -207,7 +183,6 @@ curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
 | `POST` | `/api/reminders` | 用 `{ date, text }` 建立一則 |
 | `DELETE` | `/api/reminders/:id` | 刪除一則 |
 | `POST` | `/api/test` | 發送測試私訊，確認 bot 正常 |
-| `POST` | `/api/run` | 執行到期檢查，需 `X-Cron-Secret` |
 
 ## 設定項對照
 
@@ -217,7 +192,6 @@ curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
 | `AUTH_SECRET` | secret | session cookie 的 HMAC 金鑰，換掉會讓所有人登出 |
 | `DISCORD_TOKEN` | secret | 用來開啟私訊頻道並發送訊息的 bot token |
 | `DISCORD_USER_ID` | secret | 所有提醒的唯一收件人 |
-| `CRON_SECRET` | secret | `POST /api/run` 的共用密鑰 |
 | `REMINDERS` | KV binding | 提醒儲存空間；第一次部署時自動建立 |
 
 session 有效期 30 天。cookie 為 `HttpOnly`、`Secure`、`SameSite=Lax`，值為 `到期時間.HMAC-SHA256(到期時間)`；驗證時重新計算 MAC 並以固定時間比較，伺服器端不儲存任何狀態。
@@ -230,6 +204,8 @@ Cron Trigger 可用，但**新建立或修改過**的排程可能無法啟用。
 - [Cron Trigger Activation Issues](https://www.cloudflarestatus.com/incidents/npjny9agana8) — 2026-10-14
 
 官方說法是：**近期未被修改**的排程不受影響。症狀為：觸發器已註冊、`scheduled()` handler 已部署，但呼叫次數為零。
+
+這兩起事件已於 2026-10-15 解決，cron 經實測正常運作。Cloudflare 的結案說明提到「少數受影響的 Worker 可能需要重新部署排程」，因此若你是在事件期間部署的，重新部署一次以重新註冊觸發器即可。
 
 若提醒沒有送達：
 
@@ -266,7 +242,6 @@ query {
 - 單一使用者、單一收件人，`DISCORD_USER_ID` 接收全部提醒。
 - 只有日期、沒有時刻，全部在每日排程中發送。
 - 逾期提醒會在下一次執行補送，因此過去的日期會被送出而非略過。
-- GitHub Actions 的排程在尖峰時段可能延遲。
 - KV 為最終一致性，剛新增的提醒在另一個分頁可能要等一下才出現；你正在操作的分頁因為維護自身狀態，會立即更新。
 
 ## 授權

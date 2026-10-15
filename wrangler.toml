@@ -15,10 +15,6 @@ preview_urls = false
 enabled = true
 
 # 00:00 UTC = 08:00 in UTC+8.
-# See the "Scheduling notes" section of the README: Cron Triggers can fail to
-# activate on newly created or modified schedules, which is why the included
-# GitHub Actions workflow is available as a second trigger source. Running
-# both is safe, because delivery is idempotent.
 [triggers]
 crons = ["0 0 * * *"]
 
@@ -33,4 +29,3 @@ binding = "REMINDERS"
 #   AUTH_SECRET      random string used to sign session cookies
 #   DISCORD_TOKEN    Discord bot token
 #   DISCORD_USER_ID  recipient's numeric user ID
-#   CRON_SECRET      shared secret for POST /api/run

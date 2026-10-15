@@ -25,8 +25,7 @@ graph TD
     C -->|POST /api/login| E[Compare AUTH_PASSWORD]
     E -->|Match| F[Issue HMAC cookie]
     D -->|/api/reminders| G[KV read/write]
-    H[Scheduler<br/>daily] -->|POST /api/run| I[Check CRON_SECRET]
-    I --> J[Select pending reminders<br/>date <= today]
+    H[Cron Trigger<br/>daily 00:00 UTC] --> J[Select pending reminders<br/>date <= today]
     J --> K[Discord DM]
     K --> L[Mark as sent]
 ```
@@ -118,17 +117,16 @@ If your scheduling needs differ, adjust the cron expression. It runs in UTC.
 
 ### 4. Set the secrets
 
-Five secrets are read from the environment and none of them belong in the repository.
+Four secrets are read from the environment and none of them belong in the repository.
 
 ```sh
 npx wrangler secret put AUTH_PASSWORD    # password for the web UI
 npx wrangler secret put AUTH_SECRET      # random string used to sign session cookies
 npx wrangler secret put DISCORD_TOKEN    # bot token from step 1
 npx wrangler secret put DISCORD_USER_ID  # recipient's numeric user ID
-npx wrangler secret put CRON_SECRET      # random string for the /api/run endpoint
 ```
 
-Generate the two random values with:
+Generate `AUTH_SECRET` with:
 
 ```sh
 openssl rand -base64 32
@@ -156,46 +154,24 @@ custom_domain = true
 
 Removing a `[[routes]]` block does not detach an existing custom domain from the Worker — the binding persists until you remove it in the dashboard.
 
-### 7. Optional: use GitHub Actions as a scheduler
-
-Cron Triggers occasionally fail to activate on newly created or modified schedules — see [Scheduling notes](#scheduling-notes). The Worker exposes `POST /api/run`, authenticated by the `X-Cron-Secret` header, so any external scheduler can drive it as a fallback.
-
-The included workflow calls that endpoint daily. To enable it, add the same value as a repository secret:
-
-```sh
-gh secret set CRON_SECRET
-```
-
-Then trigger it once manually to confirm it works:
-
-```sh
-gh workflow run daily-reminders.yml
-```
-
-Running both schedulers is safe: delivery is idempotent, so the second one finds nothing to do.
-
 ## Local development
 
-Create a `.dev.vars` file with the same five variables. It is already in `.gitignore`.
+Create a `.dev.vars` file with the same four variables. It is already in `.gitignore`.
 
 ```sh
 npx wrangler dev --local
 ```
 
-To exercise the scheduled path locally:
+To exercise the scheduled path locally, run the dev server with `--test-scheduled` and invoke the `scheduled()` handler directly:
 
 ```sh
-# Option A: call the same endpoint the external scheduler uses
-curl -X POST -H "X-Cron-Secret: <value>" http://localhost:8787/api/run
-
-# Option B: invoke the scheduled() handler directly
 npx wrangler dev --local --test-scheduled
 curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
 ```
 
 ## API
 
-All endpoints except `/api/login` and `/api/run` require a valid session cookie.
+All endpoints except `/api/login` require a valid session cookie.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -205,7 +181,6 @@ All endpoints except `/api/login` and `/api/run` require a valid session cookie.
 | `POST` | `/api/reminders` | Create one from `{ date, text }` |
 | `DELETE` | `/api/reminders/:id` | Delete one |
 | `POST` | `/api/test` | Send a test DM to confirm the bot works |
-| `POST` | `/api/run` | Run the due-reminder check; requires `X-Cron-Secret` |
 
 ## Configuration reference
 
@@ -215,7 +190,6 @@ All endpoints except `/api/login` and `/api/run` require a valid session cookie.
 | `AUTH_SECRET` | secret | HMAC key for session cookies; rotating it signs everyone out |
 | `DISCORD_TOKEN` | secret | Bot token used to open a DM channel and post the message |
 | `DISCORD_USER_ID` | secret | Sole recipient of every reminder |
-| `CRON_SECRET` | secret | Shared secret for `POST /api/run` |
 | `REMINDERS` | KV binding | Reminder storage; provisioned automatically on first deploy |
 
 Sessions last 30 days. The cookie is `HttpOnly`, `Secure`, and `SameSite=Lax`, and its value is `expiry.HMAC-SHA256(expiry)` — verification recomputes the MAC and compares it in constant time, so nothing is stored server-side.
@@ -228,6 +202,8 @@ Cron Triggers work, but a schedule that is **created or modified** can fail to a
 - [Cron Trigger Activation Issues](https://www.cloudflarestatus.com/incidents/npjny9agana8) — 14 Oct 2026
 
 The official wording: schedules that have *not* been recently modified are unaffected. Symptoms are a registered trigger, a deployed `scheduled()` handler, and zero invocations.
+
+Both incidents are resolved as of 15 Oct 2026 and cron is verified working. Cloudflare's resolution notes that "some schedule redeploys may be required for a small fraction of Workers who were impacted during the incident" — so if you deployed while one of these incidents was open, redeploy once to re-register the trigger.
 
 If your reminders are not arriving:
 
@@ -264,7 +240,6 @@ An empty result with a registered trigger points at the platform, not at your co
 - One user, one recipient. `DISCORD_USER_ID` receives everything.
 - Dates only — no times of day. Everything is sent in the daily run.
 - Overdue reminders are sent on the next run, so a reminder dated in the past is delivered rather than skipped.
-- GitHub Actions schedules can run late during peak load.
 - KV is eventually consistent, so a newly added reminder may take a moment to appear in a second browser tab. The UI keeps its own state after a write, so the tab you are using updates immediately.
 
 ## License
