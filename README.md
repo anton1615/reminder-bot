@@ -187,7 +187,9 @@ Everything above can be done from the Cloudflare dashboard instead of the termin
 
    Select **Deploy** to apply the changes.
 
-4. **Confirm the cron schedule.** Go to **Settings → Triggers → Cron Triggers**. It should show `0 0 * * *`, taken from `wrangler.toml`. Adjust it here if you want a different time.
+4. **Check the cron schedule.** Go to **Settings → Triggers → Cron Triggers**. It should show `0 0 * * *`, taken from `wrangler.toml`.
+
+   Because Workers Builds deploys with Wrangler, the schedule is owned by `wrangler.toml`: every deploy replaces the registered triggers with what the file declares. To change the time, edit `crons` in `wrangler.toml` and push. A schedule edited in the dashboard alone is reverted by the next deploy.
 
 5. **Open the Worker URL** shown under **Settings → Domains & Routes** (the `*.workers.dev` address, unless you bound a custom domain) and sign in with `AUTH_PASSWORD`.
 

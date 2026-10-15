@@ -189,7 +189,9 @@ custom_domain = true
 
    按 **Deploy** 套用變更。
 
-4. **確認 cron 排程。** 前往 **Settings → Triggers → Cron Triggers**，應該會顯示 `0 0 * * *`（來自 `wrangler.toml`）。想改時間就在這裡調整。
+4. **確認 cron 排程。** 前往 **Settings → Triggers → Cron Triggers**，應該會顯示 `0 0 * * *`（來自 `wrangler.toml`）。
+
+   由於 Workers Builds 是用 Wrangler 部署，排程由 `wrangler.toml` 掌管：每次部署都會用檔案裡宣告的內容取代已註冊的 trigger。要改時間就編輯 `wrangler.toml` 的 `crons` 並 push。只在 dashboard 改的排程會被下一次部署還原。
 
 5. **開啟 Worker 網址**（在 **Settings → Domains & Routes** 底下，除非你綁了自訂網域，否則就是 `*.workers.dev`），用 `AUTH_PASSWORD` 登入。
 
