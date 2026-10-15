@@ -13,7 +13,7 @@ A self-hosted reminder app that lives entirely on Cloudflare. Add a date and a n
 - **Password-protected UI** — a single password issues a signed session cookie. No accounts, no user table.
 - **Idempotent delivery** — a reminder is marked sent before the next run, so a duplicate trigger never sends twice.
 - **Free-tier friendly** — runs within the Workers free plan and needs one KV namespace.
-- **No dependencies** — one Worker, ~200 lines of JavaScript, no bundler and no npm packages at runtime.
+- **No dependencies** — one Worker in two files: ~230 lines of logic plus the inlined HTML/CSS it serves. No bundler and no npm packages at runtime.
 
 ## How it works
 

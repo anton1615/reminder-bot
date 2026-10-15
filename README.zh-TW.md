@@ -15,7 +15,7 @@
 - **密碼保護介面** — 單一密碼換取簽章 session cookie，沒有帳號系統、沒有使用者表。
 - **冪等發送** — 發送後立即標記，重複觸發不會重送。
 - **免費方案可用** — 在 Workers 免費額度內運作，只需一個 KV namespace。
-- **零依賴** — 一個 Worker、約 200 行 JavaScript，執行期不需 bundler 或 npm 套件。
+- **零依賴** — 一個 Worker、兩個檔案：約 230 行邏輯，加上內嵌提供的 HTML/CSS。執行期不需 bundler 或 npm 套件。
 
 ## 運作方式
 
