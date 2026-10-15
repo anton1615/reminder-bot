@@ -195,7 +195,7 @@ custom_domain = true
 
 5. **開啟 Worker 網址**（在 **Settings → Domains & Routes** 底下，除非你綁了自訂網域，否則就是 `*.workers.dev`），用 `AUTH_PASSWORD` 登入。
 
-這個專案**不能**用 dashboard 的內建編輯器：Worker 由兩個模組組成（`src/index.js` 匯入 `./ui.js`），而內建編輯器只支援單一檔案。請使用 Workers Builds，或在本機用 Wrangler。
+dashboard 的內建編輯器不能取代這套流程：它直接編輯已部署的 Worker，而不是 repo，因此下一次 Workers Builds 部署會覆蓋你在那裡儲存的內容。請把 repo 當作唯一來源：使用 Workers Builds，或在本機用 Wrangler。
 
 ## 本地開發
 

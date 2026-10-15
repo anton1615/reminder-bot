@@ -193,7 +193,7 @@ Everything above can be done from the Cloudflare dashboard instead of the termin
 
 5. **Open the Worker URL** shown under **Settings → Domains & Routes** (the `*.workers.dev` address, unless you bound a custom domain) and sign in with `AUTH_PASSWORD`.
 
-The dashboard editor is not an option for this project: the Worker is two modules (`src/index.js` imports `./ui.js`), and the built-in editor only handles a single file. Use Workers Builds, or Wrangler locally.
+The dashboard editor is not a substitute for this workflow. It edits the deployed Worker directly rather than the repository, so the next Workers Builds deploy overwrites anything you save there. Treat the repository as the source of truth: use Workers Builds, or Wrangler locally.
 
 ## Local development
 
