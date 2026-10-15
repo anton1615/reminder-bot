@@ -101,7 +101,7 @@ async function sendDM(env, content) {
     headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipient_id: env.DISCORD_USER_ID }),
   });
-  if (!open.ok) return { ok: false, error: `Discord 開啟私訊失敗（${open.status}）` };
+  if (!open.ok) return { ok: false, error: `Could not open a DM channel (Discord ${open.status})` };
   const { id: channelId } = await open.json();
 
   const sent = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
@@ -109,7 +109,7 @@ async function sendDM(env, content) {
     headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: content.slice(0, 2000) }),
   });
-  if (!sent.ok) return { ok: false, error: `Discord 發送失敗（${sent.status}）` };
+  if (!sent.ok) return { ok: false, error: `Could not send the message (Discord ${sent.status})` };
   return { ok: true };
 }
 
