@@ -203,12 +203,14 @@ Create a `.dev.vars` file with the same four variables. It is already in `.gitig
 npx wrangler dev --local
 ```
 
-To exercise the scheduled path locally, run the dev server with `--test-scheduled` and invoke the `scheduled()` handler directly:
+To exercise the scheduled path locally, run the dev server and hit the local scheduled endpoint. No extra flag is needed:
 
 ```sh
-npx wrangler dev --local --test-scheduled
-curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
+npx wrangler dev --local
+curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=0+0+*+*+*"
 ```
+
+Older Wrangler releases used `--test-scheduled` with the path `/__scheduled`; the current command above replaces both.
 
 ## API
 

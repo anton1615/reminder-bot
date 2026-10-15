@@ -205,12 +205,14 @@ dashboard 的內建編輯器不能取代這套流程：它直接編輯已部署�
 npx wrangler dev --local
 ```
 
-在本機測試排程路徑，請以 `--test-scheduled` 啟動 dev server，直接觸發 `scheduled()` handler：
+在本機測試排程路徑，啟動 dev server 後直接呼叫本機排程端點，不需要額外的 flag：
 
 ```sh
-npx wrangler dev --local --test-scheduled
-curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
+npx wrangler dev --local
+curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=0+0+*+*+*"
 ```
+
+較舊的 Wrangler 版本使用 `--test-scheduled` 搭配 `/__scheduled` 路徑；上面的指令同時取代這兩者。
 
 ## API
 
